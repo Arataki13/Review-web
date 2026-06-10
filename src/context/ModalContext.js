@@ -39,6 +39,10 @@ export function ModalProvider({ children }) {
             status: entryData.status,
             rating: entryData.rating,
             note: entryData.note,
+            poster_url: entryData.poster_url,
+            description: entryData.description,
+            external_id: entryData.external_id,
+            external_rating: entryData.external_rating,
           })
           .eq('id', entryData.id);
 
@@ -54,6 +58,10 @@ export function ModalProvider({ children }) {
               status: entryData.status,
               rating: entryData.rating,
               note: entryData.note,
+              poster_url: entryData.poster_url,
+              description: entryData.description,
+              external_id: entryData.external_id,
+              external_rating: entryData.external_rating,
             },
           ]);
 

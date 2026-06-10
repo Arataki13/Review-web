@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # My Tracker - Personal Media Logger
 
 A clean, modern, and dark-themed personal media tracker built with **Next.js 14 (App Router)**, **Tailwind CSS**, and **Supabase**.
@@ -51,3 +52,7 @@ Follow these 3 simple steps to get the project up and running:
 * **Filter by Categories**: Beautiful sidebar routing for **Movies**, **TV Shows**, and **Games**.
 * **Filter by Status**: Check off items as **Finished**, **Wishlist**, **Currently Watching/Playing**, or **Dropped**.
 * **Search & Edit**: Quick title search filters with instant modal popups for editing ratings (1-5 stars) and reviews.
+=======
+# Review-web
+Netflix + Steam inspired media tracker built with React, Express, PostgreSQL, and Prisma.
+>>>>>>> ca62b11954e4cda97a237aaa195bf76bcf916545

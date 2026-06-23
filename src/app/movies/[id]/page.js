@@ -77,6 +77,9 @@ export default function MovieDetailPage() {
     setSaving(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('You must be logged in to track media.');
+
       const entryData = {
         title: movie.title,
         category: 'movie',
@@ -87,6 +90,7 @@ export default function MovieDetailPage() {
         description: movie.overview,
         external_id: String(movie.id),
         external_rating: movie.vote_average,
+        user_id: user.id
       };
 
       if (trackedEntry) {

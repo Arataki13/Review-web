@@ -83,6 +83,9 @@ export default function GameDetailPage() {
     setSaving(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('You must be logged in to track media.');
+
       const entryData = {
         title: game.title,
         category: 'game',
@@ -93,6 +96,7 @@ export default function GameDetailPage() {
         description: game.short_description,
         external_id: String(game.id),
         external_rating: game.metacritic_score,
+        user_id: user.id
       };
 
       if (trackedEntry) {

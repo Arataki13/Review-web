@@ -1,13 +1,43 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Film, Tv, Gamepad2, Menu, X, Plus } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, Film, Tv, Gamepad2, Menu, X, Plus, LogOut, User } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function Sidebar({ onAddClick }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email);
+      } else {
+        setUserEmail('');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    if (confirm('Are you sure you want to log out?')) {
+      await supabase.auth.signOut();
+      router.push('/login');
+    }
+  };
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -96,21 +126,44 @@ export default function Sidebar({ onAddClick }) {
           </nav>
         </div>
 
-        {/* User Quick Controls / Footer */}
-        {onAddClick && (
-          <div className="p-4 border-t border-zinc-800/50">
+        {/* User Card & Log Out Footer */}
+        <div className="p-4 border-t border-zinc-800/50 bg-zinc-950/40 space-y-3">
+          {userEmail && (
+            <div className="flex items-center space-x-2.5 px-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-inner flex-shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] text-zinc-550 font-bold uppercase tracking-wider leading-none">Logged In As</p>
+                <p className="text-xs font-semibold text-zinc-300 truncate mt-1.5" title={userEmail}>
+                  {userEmail}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            {onAddClick && (
+              <button
+                onClick={() => {
+                  setIsMobileOpen(false);
+                  onAddClick();
+                }}
+                className="flex-1 flex items-center justify-center p-2.5 bg-indigo-600 hover:bg-indigo-505 text-white font-semibold text-xs rounded-xl shadow-lg transition active:scale-95"
+                title="Quick Add"
+              >
+                <Plus className="w-4.5 h-4.5" />
+              </button>
+            )}
             <button
-              onClick={() => {
-                setIsMobileOpen(false);
-                onAddClick();
-              }}
-              className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+              onClick={handleSignOut}
+              className="flex-1 flex items-center justify-center p-2.5 bg-zinc-900 hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 border border-zinc-800/80 hover:border-rose-500/20 font-semibold text-xs rounded-xl transition active:scale-95"
+              title="Log Out"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Quick Add Entry
+              <LogOut className="w-4.5 h-4.5" />
             </button>
           </div>
-        )}
+        </div>
       </aside>
     </>
   );

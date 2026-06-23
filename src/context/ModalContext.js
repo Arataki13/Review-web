@@ -29,6 +29,9 @@ export function ModalProvider({ children }) {
 
   const saveEntry = async (entryData) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('You must be logged in to save entries.');
+
       if (entryData.id) {
         // Update
         const { error } = await supabase
@@ -43,6 +46,7 @@ export function ModalProvider({ children }) {
             description: entryData.description,
             external_id: entryData.external_id,
             external_rating: entryData.external_rating,
+            user_id: user.id
           })
           .eq('id', entryData.id);
 
@@ -62,6 +66,7 @@ export function ModalProvider({ children }) {
               description: entryData.description,
               external_id: entryData.external_id,
               external_rating: entryData.external_rating,
+              user_id: user.id
             },
           ]);
 
@@ -71,7 +76,7 @@ export function ModalProvider({ children }) {
       closeModal();
     } catch (err) {
       console.error('Error saving entry:', err.message);
-      alert('Failed to save entry. Check your Supabase database connection and schema.');
+      alert('Failed to save entry. ' + err.message);
     }
   };
 

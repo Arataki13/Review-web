@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Star, Clock, Calendar, ArrowLeft, Plus, CheckCircle, Trash2, Edit2, Play, Heart, X, AlertCircle } from 'lucide-react';
+import { Star, Clock, Calendar, ArrowLeft, Plus, CheckCircle, Trash2, Edit2, Play, Heart, X, AlertCircle, Film } from 'lucide-react';
 
 export default function MovieDetailPage() {
   const { id } = useParams();

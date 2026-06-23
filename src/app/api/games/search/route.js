@@ -14,6 +14,29 @@ const POPULAR_GAME_IDS = [
   1086940, // Baldur's Gate 3
   367520,  // Hollow Knight
   1145360, // Hades
+  489830,  // Skyrim Special Edition
+  252490,  // Rust
+  264710,  // Subnautica
+  945360,  // Among Us
+  588650,  // Slay the Spire
+  753640,  // Outer Wilds
+  782330,  // Doom Eternal
+  550,     // Left 4 Dead 2
+  377160,  // Fallout 4
+  1172620, // Sea of Thieves
+  582010,  // Monster Hunter: World
+  1172470, // Apex Legends
+  1085660, // Destiny 2
+  255710,  // Cities: Skylines
+  427520,  // Factorio
+  294100,  // RimWorld
+  739630,  // Phasmophobia
+  239140,  // Dying Light
+  814380,  // Sekiro: Shadows Die Twice
+  289070,  // Civilization VI
+  381210,  // Dead by Daylight
+  400,     // Portal
+  220,     // Half-Life 2
 ];
 
 export async function GET(request) {
@@ -44,6 +67,7 @@ export async function GET(request) {
         }
       } else {
         // Try getting featured games
+        let featuredIds = [];
         try {
           const featuredUrl = 'https://store.steampowered.com/api/featured';
           const res = await fetch(featuredUrl, {
@@ -60,22 +84,19 @@ export async function GET(request) {
               ...(raw.featured_mac || []),
               ...(raw.featured_linux || []),
             ];
-            // Extract unique IDs
-            const uniqueIds = Array.from(new Set(featuredList.map((item) => item.id)));
-            rawResults = uniqueIds.map((id) => ({ id }));
+            featuredIds = featuredList.map((item) => item.id);
           }
         } catch (featuredError) {
-          console.warn('Failed to fetch featured Steam categories, falling back to popular IDs:', featuredError);
+          console.warn('Failed to fetch featured Steam categories:', featuredError);
         }
 
-        // Fallback to static popular list if featured list is empty
-        if (rawResults.length === 0) {
-          rawResults = POPULAR_GAME_IDS.map((id) => ({ id }));
-        }
+        // Combine featured games and popular game IDs, keeping uniqueness
+        const combinedIds = Array.from(new Set([...featuredIds, ...POPULAR_GAME_IDS]));
+        rawResults = combinedIds.map((id) => ({ id }));
       }
 
-      // Limit concurrent details fetching (max 15 items to speed up response and avoid rate limits)
-      const itemsToResolve = rawResults.slice(0, 15);
+      // Limit concurrent details fetching (max 35 items to show more games)
+      const itemsToResolve = rawResults.slice(0, 35);
 
       const resolved = await Promise.all(
         itemsToResolve.map(async (item) => {

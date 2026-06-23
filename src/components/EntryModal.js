@@ -74,6 +74,29 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
     }
   };
 
+  const autofillMovieLink = async (movieId) => {
+    setSearching(true);
+    setSuggestions([]);
+    try {
+      const res = await fetch(`/api/movies/${movieId}`);
+      if (!res.ok) throw new Error('Movie details fetch failed');
+      const data = await res.json();
+      
+      setTitle(data.title);
+      setExternalId(String(data.id));
+      setExternalRating(data.vote_average ? Number(data.vote_average) : null);
+      setPosterUrl(data.poster_url || '');
+      setDescription(data.overview || '');
+      
+      setSearchQuery('');
+    } catch (err) {
+      console.error('Movie URL autofill error:', err);
+      setError('Could not fetch movie details from the TMDB URL.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   // Debounced autocomplete fetch hook
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -86,6 +109,14 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
       const appId = steamMatch[1];
       setCategory('game');
       autofillSteamLink(appId);
+      return;
+    }
+
+    const movieMatch = searchQuery.match(/themoviedb\.org\/movie\/(\d+)/i);
+    if (movieMatch) {
+      const movieId = movieMatch[1];
+      setCategory('movie');
+      autofillMovieLink(movieId);
       return;
     }
 

@@ -188,6 +188,13 @@ export default function MovieDetailPage() {
     );
   }
 
+  const formatMovieDate = (dateStr) => {
+    if (!dateStr) return 'TBD';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   return (
     <div className="space-y-8">
       {/* Back button */}
@@ -261,7 +268,7 @@ export default function MovieDetailPage() {
                 {movie.release_date && (
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-1.5 text-zinc-500" />
-                    <span>Released: {new Date(movie.release_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span>Released: {formatMovieDate(movie.release_date)}</span>
                   </div>
                 )}
                 {movie.runtime > 0 && (

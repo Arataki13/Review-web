@@ -64,31 +64,21 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
   const performSearch = async (query) => {
     setSearching(true);
     try {
-      if (category === 'movie' || category === 'tvshow') {
-        const token = process.env.NEXT_PUBLIC_TMDB_TOKEN;
-        if (!token || token === 'your-tmdb-bearer-token-here') {
-          console.warn('TMDB token is missing or default placeholder');
-          setSuggestions([]);
-          return;
-        }
-        const endpoint = category === 'movie' ? 'movie' : 'tv';
-        const res = await fetch(
-          `https://api.themoviedb.org/3/search/${endpoint}?query=${encodeURIComponent(query)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json',
-            },
-          }
-        );
-        if (!res.ok) throw new Error('TMDB request failed');
+      if (category === 'movie') {
+        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error('Movie proxy search failed');
+        const data = await res.json();
+        setSuggestions(data.results || []);
+      } else if (category === 'tvshow') {
+        const res = await fetch(`/api/tvshows/search?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error('TV shows proxy search failed');
         const data = await res.json();
         setSuggestions(data.results || []);
       } else if (category === 'game') {
-        const res = await fetch(`/api/steam/search?term=${encodeURIComponent(query)}`);
-        if (!res.ok) throw new Error('Steam proxy request failed');
+        const res = await fetch(`/api/games/search?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error('Game proxy search failed');
         const data = await res.json();
-        setSuggestions(data.items || []);
+        setSuggestions(data.results || []);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -99,17 +89,13 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
 
   const fetchSteamDetails = async (appId) => {
     try {
-      const res = await fetch(`/api/steam/details?appid=${appId}`);
-      const json = await res.json();
-      if (json[appId]?.success) {
-        const data = json[appId].data;
-        const desc = data.short_description || data.detailed_description || '';
-        const genres = data.genres ? `Genres: ${data.genres.map(g => g.description).join(', ')}` : '';
-        const finalDesc = genres ? `${genres}\n\n${desc}` : desc;
-        // Strip html tags from Steam description
-        const cleanDesc = finalDesc.replace(/<[^>]*>/g, '');
-        return cleanDesc;
-      }
+      const res = await fetch(`/api/games/${appId}`);
+      if (!res.ok) throw new Error('Game details fetch failed');
+      const data = await res.json();
+      const desc = data.short_description || data.long_description || '';
+      const genres = data.genres && data.genres.length > 0 ? `Genres: ${data.genres.join(', ')}` : '';
+      const finalDesc = genres ? `${genres}\n\n${desc}` : desc;
+      return finalDesc;
     } catch (err) {
       console.error('Error fetching Steam details:', err);
     }
@@ -120,22 +106,25 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
     setSuggestions([]);
     setSearchQuery('');
     
-    if (category === 'movie' || category === 'tvshow') {
-      const isMovie = category === 'movie';
-      const itemTitle = isMovie ? item.title : item.name;
-      
-      setTitle(itemTitle);
+    if (category === 'movie') {
+      setTitle(item.title);
+      setExternalId(String(item.id));
+      setExternalRating(item.vote_average ? Number(item.vote_average) : null);
+      setDescription(item.overview || '');
+      setPosterUrl(item.poster_url || '');
+    } else if (category === 'tvshow') {
+      setTitle(item.name);
       setExternalId(String(item.id));
       setExternalRating(item.vote_average ? Number(item.vote_average) : null);
       setDescription(item.overview || '');
       setPosterUrl(item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : '');
     } else if (category === 'game') {
-      setTitle(item.name);
+      setTitle(item.title);
       setExternalId(String(item.id));
-      setExternalRating(item.metascore ? Number(item.metascore) : null);
-      setPosterUrl(`https://cdn.akamai.steamstatic.com/steam/apps/${item.id}/header.jpg`);
+      setExternalRating(item.metacritic_score ? Number(item.metacritic_score) : null);
+      setPosterUrl(item.header_url || item.capsule_url || '');
       
-      // Fetch details asynchronously for short description
+      // Fetch details asynchronously for description
       setSearching(true);
       const cleanDesc = await fetchSteamDetails(item.id);
       setDescription(cleanDesc);
@@ -258,13 +247,13 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
                   {suggestions.map((item) => {
                     const isGame = category === 'game';
                     const itemId = item.id;
-                    const itemTitle = isGame ? item.name : (item.title || item.name);
-                    const releaseDate = isGame ? '' : (item.release_date || item.first_air_date || '');
-                    const year = releaseDate ? ` (${releaseDate.split('-')[0]})` : '';
+                    const itemTitle = isGame ? item.title : (category === 'movie' ? item.title : item.name);
+                    const releaseDate = isGame ? item.release_date : (category === 'movie' ? item.release_date : item.first_air_date);
+                    const year = releaseDate && typeof releaseDate === 'string' && releaseDate.includes('-') ? ` (${releaseDate.split('-')[0]})` : (releaseDate ? ` (${releaseDate})` : '');
                     
                     const thumbUrl = isGame 
-                      ? item.tiny_image 
-                      : (item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : '');
+                      ? (item.capsule_url || item.header_url)
+                      : (category === 'movie' ? item.poster_url : (item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : ''));
 
                     return (
                       <button

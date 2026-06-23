@@ -47,10 +47,45 @@ export default function EntryModal({ isOpen, onClose, onSave, entry = null, defa
     setError('');
   }, [entry, defaultCategory, isOpen]);
 
+  const autofillSteamLink = async (appId) => {
+    setSearching(true);
+    setSuggestions([]);
+    try {
+      const res = await fetch(`/api/games/${appId}`);
+      if (!res.ok) throw new Error('Game details fetch failed');
+      const data = await res.json();
+      
+      setTitle(data.title);
+      setExternalId(String(data.id));
+      setExternalRating(data.metacritic_score ? Number(data.metacritic_score) : null);
+      setPosterUrl(data.header_url || data.capsule_url || '');
+      
+      const desc = data.short_description || data.long_description || '';
+      const genres = data.genres && data.genres.length > 0 ? `Genres: ${data.genres.join(', ')}` : '';
+      const finalDesc = genres ? `${genres}\n\n${desc}` : desc;
+      setDescription(finalDesc);
+      
+      setSearchQuery('');
+    } catch (err) {
+      console.error('Steam URL autofill error:', err);
+      setError('Could not fetch game details from the Steam URL.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   // Debounced autocomplete fetch hook
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       setSuggestions([]);
+      return;
+    }
+
+    const steamMatch = searchQuery.match(/store\.steampowered\.com\/app\/(\d+)/i);
+    if (steamMatch) {
+      const appId = steamMatch[1];
+      setCategory('game');
+      autofillSteamLink(appId);
       return;
     }
 

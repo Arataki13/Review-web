@@ -16,6 +16,7 @@ export default function LoginPage() {
   // Loading & error states
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [otpType, setOtpType] = useState('email');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -44,7 +45,9 @@ export default function LoginPage() {
         if (data?.user?.identities?.length === 0) {
           setError('An account with this email already exists.');
         } else {
-          setMessage('Signup successful! Check your email for a confirmation link.');
+          setOtpSent(true);
+          setOtpType('signup');
+          setMessage('Signup successful! We have sent a verification code to your email. Please enter it below to confirm your account.');
         }
       } else {
         // Sign In with Email and Password
@@ -53,7 +56,23 @@ export default function LoginPage() {
           password,
         });
 
-        if (loginError) throw loginError;
+        if (loginError) {
+          if (loginError.message.toLowerCase().includes('email not confirmed') || 
+              loginError.message.toLowerCase().includes('confirm your email')) {
+            // Trigger resend of confirmation OTP
+            const { error: resendError } = await supabase.auth.resend({
+              type: 'signup',
+              email,
+            });
+            if (resendError) throw resendError;
+            
+            setOtpSent(true);
+            setOtpType('signup');
+            setMessage('Your email is not verified yet. We have sent a verification code to your email. Please enter it below.');
+            return;
+          }
+          throw loginError;
+        }
       }
     } catch (err) {
       console.error('Email Auth Error:', err);
@@ -86,6 +105,7 @@ export default function LoginPage() {
 
       if (otpError) throw otpError;
       setOtpSent(true);
+      setOtpType('email');
       setMessage('OTP verification code has been sent to your email.');
     } catch (err) {
       console.error('OTP Request Error:', err);
@@ -111,7 +131,7 @@ export default function LoginPage() {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: otpCode,
-        type: 'email',
+        type: otpType,
       });
 
       if (verifyError) throw verifyError;

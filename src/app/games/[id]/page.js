@@ -206,7 +206,11 @@ export default function GameDetailPage() {
       }
 
       const { redirectUrl } = await res.json();
-      router.push(redirectUrl);
+      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
+        window.location.href = redirectUrl;
+      } else {
+        router.push(redirectUrl);
+      }
     } catch (err) {
       console.error('Checkout error:', err);
       alert('Checkout Failed: ' + err.message);

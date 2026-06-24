@@ -69,27 +69,29 @@ export async function POST(request) {
 
     if (process.env.PAYZY_API_KEY && process.env.PAYZY_API_KEY !== 'your_payzy_api_key') {
       try {
-        // Real Payzy API call layout:
-        // const payzyRes = await fetch('https://api.payzy.lk/v1/checkout/sessions', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${process.env.PAYZY_API_KEY}`
-        //   },
-        //   body: JSON.stringify({
-        //     merchant_id: process.env.PAYZY_MERCHANT_ID,
-        //     order_id: order.id,
-        //     amount: order.amount,
-        //     currency: 'LKR',
-        //     return_url: `${new URL(request.url).origin}/checkout/success?order_id=${order.id}`,
-        //     cancel_url: `${new URL(request.url).origin}/checkout/cancel?order_id=${order.id}`,
-        //     webhook_url: `${new URL(request.url).origin}/api/webhooks/payzy`
-        //   })
-        // });
-        // const payzyData = await payzyRes.json();
-        // if (payzyData.checkout_url) {
-        //   redirectUrl = payzyData.checkout_url;
-        // }
+        // Real Payzy API call execution:
+        const payzyRes = await fetch('https://api.payzy.lk/v1/checkout/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.PAYZY_API_KEY}`
+          },
+          body: JSON.stringify({
+            merchant_id: process.env.PAYZY_MERCHANT_ID,
+            order_id: order.id,
+            amount: order.amount,
+            currency: 'LKR',
+            return_url: `${new URL(request.url).origin}/checkout/success?order_id=${order.id}`,
+            cancel_url: `${new URL(request.url).origin}/checkout/cancel?order_id=${order.id}`,
+            webhook_url: `${new URL(request.url).origin}/api/webhooks/payzy`
+          })
+        });
+        const payzyData = await payzyRes.json();
+        if (payzyData.checkout_url) {
+          redirectUrl = payzyData.checkout_url;
+        } else {
+          console.warn('Payzy API did not return checkout_url, API response:', payzyData);
+        }
       } catch (payzyErr) {
         console.error('Error invoking real Payzy API, falling back to simulator:', payzyErr);
       }

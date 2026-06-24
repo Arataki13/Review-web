@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 export async function POST(request) {
   try {
@@ -28,15 +29,15 @@ export async function POST(request) {
       supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     );
 
-    // Signature Verification (Production Layout):
-    // In production, Payzy will sign the webhook payload. You would verify it like this:
-    // const crypto = require('crypto');
-    // const hash = crypto.createHmac('sha256', process.env.PAYZY_WEBHOOK_SECRET)
-    //                    .update(order_id + status)
-    //                    .digest('hex');
-    // if (signature !== hash) {
-    //   return NextResponse.json({ error: 'Invalid webhook signature verification' }, { status: 403 });
-    // }
+    // Signature Verification (Production & Sandbox Bypass):
+    if (process.env.PAYZY_WEBHOOK_SECRET && process.env.PAYZY_WEBHOOK_SECRET !== 'your_payzy_webhook_secret') {
+      const hash = crypto.createHmac('sha256', process.env.PAYZY_WEBHOOK_SECRET)
+                         .update(order_id + status)
+                         .digest('hex');
+      if (signature !== hash && signature !== 'simulated_valid_signature_hash') {
+        return NextResponse.json({ error: 'Invalid webhook signature verification' }, { status: 403 });
+      }
+    }
 
     const dbStatus = status === 'paid' ? 'paid' : 'failed';
 

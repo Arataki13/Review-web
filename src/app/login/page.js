@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Film, Gamepad2, Mail, Lock, LogIn, Key, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 
@@ -17,8 +17,39 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpType, setOtpType] = useState('email');
+  const [sandboxOtp, setSandboxOtp] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  // Poll for sandbox OTP verification codes when verification is pending
+  useEffect(() => {
+    let intervalId;
+    if (otpSent && email) {
+      const fetchSandboxOtp = async () => {
+        try {
+          const res = await fetch(`/api/auth/get-test-otp?email=${encodeURIComponent(email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.otp) {
+              setSandboxOtp(data.otp);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch sandbox OTP:', err);
+        }
+      };
+
+      // Fetch immediately, then every 2 seconds
+      fetchSandboxOtp();
+      intervalId = setInterval(fetchSandboxOtp, 2000);
+    } else {
+      setSandboxOtp('');
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [otpSent, email]);
 
   // Handle standard email/password login or signup
   const handleEmailAuth = async (e) => {
@@ -242,6 +273,14 @@ export default function LoginPage() {
           {/* Verification Code Form */}
           {otpSent ? (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
+              {sandboxOtp && (
+                <div className="bg-indigo-950/40 border border-indigo-500/20 text-indigo-300 text-xs p-3.5 rounded-xl font-medium text-center shadow-lg shadow-indigo-500/5 animate-pulse">
+                  <span className="font-extrabold uppercase text-[10px] text-indigo-400 tracking-wider block mb-1">
+                    ✨ Sandbox Verification Code
+                  </span>
+                  Your code is <code className="text-sm font-black text-white bg-indigo-900/50 px-2 py-0.5 rounded tracking-widest">{sandboxOtp}</code>. Enter it below to proceed.
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">
                   Verification Code (OTP)

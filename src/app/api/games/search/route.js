@@ -120,10 +120,18 @@ export async function GET(request) {
 
               // Format price
               let price = 'TBD';
+              let price_amount_lkr = null;
               if (data.is_free) {
                 price = 'Free';
+                price_amount_lkr = 0;
               } else if (data.price_overview) {
-                price = data.price_overview.final_formatted || data.price_overview.initial_formatted || 'Paid';
+                // Convert USD cents (e.g., 5999 for $59.99) to LKR using 1 USD = 300 LKR
+                const usdAmount = data.price_overview.final / 100;
+                price_amount_lkr = Math.round(usdAmount * 300);
+                price = `LKR ${price_amount_lkr.toLocaleString()}`;
+              } else {
+                price_amount_lkr = 4500; // default standard LKR price
+                price = `LKR ${price_amount_lkr.toLocaleString()}`;
               }
 
               // Platforms
@@ -141,6 +149,7 @@ export async function GET(request) {
                 capsule_url: data.capsule_image || null,
                 release_date: data.release_date?.date || 'TBD',
                 price,
+                price_amount_lkr,
                 genres: (data.genres || []).map((g) => g.description),
                 platforms,
                 metacritic_score: data.metacritic?.score || null,

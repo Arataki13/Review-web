@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Star, Monitor, Calendar, ArrowLeft, Plus, CheckCircle, Trash2, Heart, Award, ArrowLeftRight, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Star, Monitor, Calendar, ArrowLeft, Plus, CheckCircle, Trash2, Heart, Award, ArrowLeftRight, Image as ImageIcon, AlertCircle, CreditCard } from 'lucide-react';
 
 export default function GameDetailPage() {
   const { id } = useParams();
@@ -22,6 +22,10 @@ export default function GameDetailPage() {
   const [rating, setRating] = useState(0);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // States for checkout and purchase status
+  const [isPurchased, setIsPurchased] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -68,6 +72,20 @@ export default function GameDetailPage() {
         setStatus('wishlist');
         setRating(0);
         setNote('');
+      }
+
+      // 3. Fetch purchase status from orders
+      const { data: purchaseData, error: purchaseError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('game_id', String(id))
+        .eq('status', 'paid')
+        .maybeSingle();
+
+      if (purchaseData) {
+        setIsPurchased(true);
+      } else {
+        setIsPurchased(false);
       }
     } catch (err) {
       console.error('Error loading game details:', err);
@@ -153,6 +171,47 @@ export default function GameDetailPage() {
       alert('Failed to remove from tracker: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleBuyGame = async () => {
+    if (!game) return;
+    setCheckingOut(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('You must be logged in to purchase games.');
+      }
+
+      const res = await fetch('/api/checkout/payzy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          gameId: String(game.id),
+          gameTitle: game.title,
+          gamePoster: game.header_url || game.capsule_url,
+          amount: game.price_amount_lkr || 4500,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to initiate checkout.');
+      }
+
+      const { redirectUrl } = await res.json();
+      router.push(redirectUrl);
+    } catch (err) {
+      console.error('Checkout error:', err);
+      alert('Checkout Failed: ' + err.message);
+    } finally {
+      setCheckingOut(false);
     }
   };
 
@@ -360,8 +419,61 @@ export default function GameDetailPage() {
           )}
         </div>
 
-        {/* Right column: Tracking controls */}
+        {/* Right column: Purchase & Tracking */}
         <div className="space-y-6">
+          {/* Purchase details card */}
+          {game.price !== 'Free' && (
+            <div className="bg-zinc-900 border border-zinc-850 rounded-3xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-zinc-100 flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2 text-indigo-400" />
+                  <span>Buy Game</span>
+                </h3>
+                {isPurchased && (
+                  <span className="inline-flex items-center text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
+                    Purchased
+                  </span>
+                )}
+              </div>
+
+              {isPurchased ? (
+                <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-850/80 text-center">
+                  <p className="text-xs text-zinc-400 leading-relaxed font-light">
+                    You already own this game! Play and log your progress in the tracker card below.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-850 flex justify-between items-center">
+                    <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Price</span>
+                    <span className="text-lg font-black text-zinc-100">{game.price}</span>
+                  </div>
+
+                  {game.price_amount_lkr && (
+                    <div className="text-[10px] text-zinc-400 leading-relaxed bg-zinc-950/40 p-3 rounded-xl border border-zinc-900 space-y-1">
+                      <p className="font-extrabold text-cyan-400 uppercase tracking-widest">Payzy Installments Plan:</p>
+                      <p>
+                        Split payment into 3 interest-free installments of{' '}
+                        <strong className="text-zinc-200">
+                          LKR {Math.round(game.price_amount_lkr / 3).toLocaleString()}
+                        </strong>{' '}
+                        per month.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleBuyGame}
+                    disabled={checkingOut}
+                    className="w-full flex items-center justify-center bg-gradient-to-r from-indigo-650 to-indigo-550 hover:from-indigo-600 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl shadow-lg active:scale-95 transition disabled:opacity-50"
+                  >
+                    {checkingOut ? 'Initializing Checkout...' : 'Buy Now with Payzy'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-zinc-900 border border-zinc-850 rounded-3xl p-6 shadow-xl space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-zinc-100 flex items-center">
